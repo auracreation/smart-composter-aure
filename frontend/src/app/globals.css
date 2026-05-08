@@ -1,0 +1,16 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  background-color: #f8fafc;
+  font-family: 'Inter', sans-serif;
+}
+
+.toggle-checkbox:checked {
+  right: 0;
+  border-color: #3b82f6;
+}
+.toggle-checkbox:checked + .toggle-label {
+  background-color: #3b82f6;
+}

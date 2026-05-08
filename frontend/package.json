@@ -1,0 +1,29 @@
+{
+  "name": "smart-composter-frontend",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "node node_modules/.bin/next.cmd dev --port 3000",
+    "build": "node node_modules/.bin/next.cmd build",
+    "start": "node node_modules/.bin/next.cmd start"
+  },
+  "dependencies": {
+    "@marsidev/react-turnstile": "^1.5.2",
+    "@supabase/ssr": "^0.10.2",
+    "@supabase/supabase-js": "^2.105.3",
+    "lottie-react": "^2.4.1",
+    "next": "^14.1.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "zustand": "^4.5.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "@types/react": "^18.2.48",
+    "@types/react-dom": "^18.2.18",
+    "autoprefixer": "^10.4.17",
+    "postcss": "^8.4.33",
+    "tailwindcss": "^3.4.1",
+    "typescript": "^5.3.3"
+  }
+}
