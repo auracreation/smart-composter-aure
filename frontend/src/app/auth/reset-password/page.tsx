@@ -12,21 +12,60 @@ export default function ResetPasswordPage() {
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [ready, setReady] = useState(false);
+  const [linkInvalid, setLinkInvalid] = useState(false);
   const [showPass, setShowPass] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
 
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const code = params.get("code");
+    const tokenHash = params.get("token_hash");
+    const type = params.get("type");
+    const hasHashFragment = window.location.hash.includes("access_token");
+
+    // PKCE flow: exchange code for session
+    if (code) {
+      supabase.auth.exchangeCodeForSession(code).then(({ error }) => {
+        if (error) setLinkInvalid(true);
+      });
+    }
+    // OTP/token_hash flow: verify OTP
+    else if (tokenHash && type === "recovery") {
+      supabase.auth.verifyOtp({ token_hash: tokenHash, type: "recovery" }).then(({ error }) => {
+        if (error) setLinkInvalid(true);
+      });
+    }
+    // No recognised token in URL and no hash fragment — show error immediately
+    else if (!hasHashFragment) {
+      setLinkInvalid(true);
+      return;
+    }
+
+    // Timeout: if PASSWORD_RECOVERY event never fires within 12s, the link is expired/invalid
+    const timeout = setTimeout(() => setLinkInvalid(true), 12000);
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
-      if (event === "PASSWORD_RECOVERY") setReady(true);
+      if (event === "PASSWORD_RECOVERY") {
+        clearTimeout(timeout);
+        setLinkInvalid(false);
+        setReady(true);
+      }
     });
-    return () => subscription.unsubscribe();
+
+    return () => {
+      subscription.unsubscribe();
+      clearTimeout(timeout);
+    };
   }, []);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
     if (password !== confirm) return setError("Kata sandi tidak cocok.");
-    if (password.length < 6) return setError("Kata sandi minimal 6 karakter.");
+    if (password.length < 8) return setError("Kata sandi minimal 8 karakter.");
+    if (!/[a-z]/.test(password) || !/[A-Z]/.test(password) || !/[0-9]/.test(password)) {
+      return setError("Password harus mengandung huruf kecil, huruf besar, dan angka.");
+    }
     setLoading(true);
     const { error } = await supabase.auth.updateUser({ password });
     if (error) {
@@ -34,8 +73,9 @@ export default function ResetPasswordPage() {
       setLoading(false);
       return;
     }
-    setMessage("Kata sandi berhasil diubah. Mengalihkan ke dashboard...");
-    setTimeout(() => router.push("/"), 2000);
+    setMessage("Kata sandi berhasil diubah. Mengalihkan ke halaman masuk...");
+    await supabase.auth.signOut();
+    setTimeout(() => router.push("/login"), 2000);
   }
 
   return (
@@ -48,13 +88,31 @@ export default function ResetPasswordPage() {
           <div className="mb-6">
             <h2 className="text-xl font-bold text-gray-800">Buat Kata Sandi Baru</h2>
             <p className="text-sm text-gray-500 mt-1">
-              {ready
-                ? "Masukkan kata sandi baru untuk akun Anda"
-                : "Memverifikasi link reset, harap tunggu..."}
+              {linkInvalid
+                ? "Link tidak valid atau sudah kadaluarsa"
+                : ready
+                  ? "Masukkan kata sandi baru untuk akun Anda"
+                  : "Memverifikasi link reset, harap tunggu..."}
             </p>
           </div>
 
-          {!ready ? (
+          {linkInvalid ? (
+            <div className="space-y-4">
+              <div className="flex items-start gap-2.5 bg-red-50 border border-red-100 rounded-xl px-4 py-3">
+                <i className="fa-solid fa-circle-exclamation text-brand-red mt-0.5 shrink-0" />
+                <p className="text-sm text-brand-red">
+                  Link reset tidak valid atau sudah kadaluarsa. Silakan minta link baru.
+                </p>
+              </div>
+              <button
+                onClick={() => router.push("/login")}
+                className="w-full py-2.5 bg-brand-blue hover:bg-brand-dark text-white font-semibold rounded-full text-sm transition-all duration-200 shadow-md shadow-blue-200 flex items-center justify-center gap-2"
+              >
+                <i className="fa-solid fa-paper-plane" />
+                Minta Link Reset Baru
+              </button>
+            </div>
+          ) : !ready ? (
             <div className="flex justify-center py-8">
               <span className="w-8 h-8 border-4 border-brand-blue/20 border-t-brand-blue rounded-full animate-spin" />
             </div>

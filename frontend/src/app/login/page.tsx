@@ -41,15 +41,24 @@ export default function LoginPage() {
     e.preventDefault();
     setError(null);
     setMessage(null);
+    if (!captchaToken) {
+      setError("Selesaikan verifikasi CAPTCHA terlebih dahulu.");
+      return;
+    }
     setLoading(true);
     try {
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
         redirectTo: `${siteUrl}/auth/reset-password`,
+        captchaToken,
       });
       if (error) throw error;
       setMessage("Link reset kata sandi telah dikirim ke email Anda.");
+      turnstileRef.current?.reset();
+      setCaptchaToken(null);
     } catch (err: any) {
       setError(err.message ?? "Gagal mengirim email reset.");
+      turnstileRef.current?.reset();
+      setCaptchaToken(null);
     } finally {
       setLoading(false);
     }
@@ -128,7 +137,7 @@ export default function LoginPage() {
           {mode !== "forgot" && (
             <div className="flex bg-brand-gray rounded-xl p-1 mb-6">
               <button
-                onClick={() => { setMode("signin"); setError(null); setMessage(null); }}
+                onClick={() => { setMode("signin"); setError(null); setMessage(null); setCaptchaToken(null); }}
                 className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-all duration-200 ${
                   mode === "signin"
                     ? "bg-white text-brand-blue shadow-sm"
@@ -138,7 +147,7 @@ export default function LoginPage() {
                 Masuk
               </button>
               <button
-                onClick={() => { setMode("signup"); setError(null); setMessage(null); }}
+                onClick={() => { setMode("signup"); setError(null); setMessage(null); setCaptchaToken(null); }}
                 className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-all duration-200 ${
                   mode === "signup"
                     ? "bg-white text-brand-blue shadow-sm"
@@ -182,6 +191,16 @@ export default function LoginPage() {
                   <p className="text-sm text-brand-green">{message}</p>
                 </div>
               )}
+              <div className="flex justify-center">
+                <Turnstile
+                  ref={turnstileRef}
+                  siteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY!}
+                  onSuccess={(token) => setCaptchaToken(token)}
+                  onExpire={() => setCaptchaToken(null)}
+                  onError={() => { setCaptchaToken(null); setError("Verifikasi CAPTCHA gagal. Coba lagi."); }}
+                  options={{ theme: "light", language: "id" }}
+                />
+              </div>
               <button
                 type="submit"
                 disabled={loading}
@@ -195,7 +214,7 @@ export default function LoginPage() {
               </button>
               <button
                 type="button"
-                onClick={() => { setMode("signin"); setError(null); setMessage(null); }}
+                onClick={() => { setMode("signin"); setError(null); setMessage(null); setCaptchaToken(null); }}
                 className="w-full text-sm text-gray-500 hover:text-brand-blue text-center transition-colors"
               >
                 ← Kembali ke Masuk
@@ -232,7 +251,7 @@ export default function LoginPage() {
                   {mode === "signin" && (
                     <button
                       type="button"
-                      onClick={() => { setMode("forgot"); setError(null); setMessage(null); }}
+                      onClick={() => { setMode("forgot"); setError(null); setMessage(null); setCaptchaToken(null); }}
                       className="text-xs text-brand-blue hover:underline"
                     >
                       Lupa kata sandi?

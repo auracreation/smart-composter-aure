@@ -5,9 +5,11 @@ import { getState } from "@/lib/api";
 import { createClient } from "@/lib/supabase/client";
 
 const WS_URL = process.env.NEXT_PUBLIC_WS_URL || "ws://localhost:3001/ws";
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
 const RECONNECT_BASE_MS = 1000;
 const RECONNECT_MAX_MS = 15000;
 const POLL_INTERVAL_MS = 5000;
+const HEALTH_POLL_MS = 10000;
 
 export function useLiveState() {
   const setState = useComposterStore((s) => s.setState);
@@ -19,6 +21,28 @@ export function useLiveState() {
   const reconnectTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pollTimer = useRef<ReturnType<typeof setInterval> | null>(null);
   const mountedRef = useRef(true);
+  const healthTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const startHealthPoll = useCallback(() => {
+    if (healthTimerRef.current) return;
+    async function ping() {
+      try {
+        const res = await fetch(`${API_URL}/api/health`, { cache: "no-store" });
+        if (mountedRef.current) setConnected(res.ok);
+      } catch {
+        if (mountedRef.current) setConnected(false);
+      }
+    }
+    ping();
+    healthTimerRef.current = setInterval(ping, HEALTH_POLL_MS);
+  }, [setConnected]);
+
+  const stopHealthPoll = useCallback(() => {
+    if (healthTimerRef.current) {
+      clearInterval(healthTimerRef.current);
+      healthTimerRef.current = null;
+    }
+  }, []);
 
   const startPolling = useCallback((deviceId: string) => {
     if (pollTimer.current) return;
@@ -108,7 +132,16 @@ export function useLiveState() {
   }, [connect]);
 
   useEffect(() => {
-    if (!selectedDeviceId) return;
+    if (!selectedDeviceId) {
+      mountedRef.current = true;
+      startHealthPoll();
+      return () => {
+        mountedRef.current = false;
+        stopHealthPoll();
+      };
+    }
+
+    stopHealthPoll();
     mountedRef.current = true;
     reconnectDelay.current = RECONNECT_BASE_MS;
 
@@ -131,5 +164,5 @@ export function useLiveState() {
       if (reconnectTimer.current) { clearTimeout(reconnectTimer.current); reconnectTimer.current = null; }
       stopPolling();
     };
-  }, [selectedDeviceId, connect, setState, stopPolling]);
+  }, [selectedDeviceId, connect, setState, stopPolling, startHealthPoll, stopHealthPoll]);
 }

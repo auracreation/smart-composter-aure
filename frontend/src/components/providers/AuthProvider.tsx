@@ -10,7 +10,7 @@ export default function AuthProvider({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
-  const isAuthPage = pathname === "/login";
+  const isAuthPage = pathname === "/login" || pathname.startsWith("/auth/");
 
   if (isAuthPage) {
     return <>{children}</>;
