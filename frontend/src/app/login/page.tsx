@@ -18,6 +18,7 @@ export default function LoginPage() {
   const turnstileRef = useRef<TurnstileInstance>(null);
 
   const supabase = createClient();
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || window.location.origin;
 
   async function handleGoogleSignIn() {
     setError(null);
@@ -26,7 +27,7 @@ export default function LoginPage() {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
-          redirectTo: `${window.location.origin}/auth/callback`,
+          redirectTo: `${siteUrl}/auth/callback`,
         },
       });
       if (error) throw error;
@@ -43,7 +44,7 @@ export default function LoginPage() {
     setLoading(true);
     try {
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/auth/reset-password`,
+        redirectTo: `${siteUrl}/auth/reset-password`,
       });
       if (error) throw error;
       setMessage("Link reset kata sandi telah dikirim ke email Anda.");
@@ -84,7 +85,10 @@ export default function LoginPage() {
         const { error } = await supabase.auth.signUp({
           email,
           password,
-          options: { captchaToken },
+          options: {
+            captchaToken,
+            emailRedirectTo: `${siteUrl}/auth/callback`,
+          },
         });
         if (error) throw error;
         setMessage("Cek email Anda untuk konfirmasi akun.");
