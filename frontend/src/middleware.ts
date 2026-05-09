@@ -4,6 +4,13 @@ import { NextResponse, type NextRequest } from "next/server";
 export async function middleware(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request });
 
+  const pathname = request.nextUrl.pathname;
+  const isLoginPage = pathname === "/login";
+
+  if (pathname.startsWith("/auth/")) {
+    return NextResponse.next();
+  }
+
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -29,18 +36,7 @@ export async function middleware(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  const pathname = request.nextUrl.pathname;
-  const isLoginPage = pathname === "/login";
-  const isAuthCallback = pathname.startsWith("/auth/callback");
-
-  const code = request.nextUrl.searchParams.get("code");
-  if (code && !isAuthCallback) {
-    const url = request.nextUrl.clone();
-    url.pathname = "/auth/callback";
-    return NextResponse.redirect(url);
-  }
-
-  if (!user && !isLoginPage && !isAuthCallback) {
+  if (!user && !isLoginPage) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     return NextResponse.redirect(url);
