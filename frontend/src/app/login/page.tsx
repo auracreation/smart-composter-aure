@@ -18,7 +18,7 @@ export default function LoginPage() {
   const turnstileRef = useRef<TurnstileInstance>(null);
 
   const supabase = createClient();
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || window.location.origin;
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://composter.ruangawan.com";
 
   async function handleGoogleSignIn() {
     setError(null);
